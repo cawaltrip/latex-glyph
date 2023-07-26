@@ -1,0 +1,136 @@
+%% glyph.sty
+%% Copyright 2023 Chris Waltrip
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Chris Waltrip.
+%
+% This work consists of all files listed in ../MANIFEST-LPPL.md.
+
+% Rollback
+\DeclareCurrentRelease{}{2023/07/11}
+
+% Identification
+\RequirePackage{expl3}
+\ProvidesExplPackage{glyph}{2023/07/11}{0.0.1}{LaTeX~Support~for~placing~font~glyphs~via~glyph~name}
+
+\NeedsTeXFormat{LaTeX2e}[2022-06-01]
+
+% Initial Code
+%\RequirePackage{l3keys2e}
+\prop_new:N\g__glyph_fonts_list_prop
+\prop_new:N\g__glyph_dualglyph_fonts_list_prop
+\bool_new:N\g__glyph_fixedwidth_bool
+\bool_new:N\g__glyph_dualgllyph_fixedwidth_bool
+\fp_new:N\g__glyph_fixedwidth_fp
+\fp_new:N\g__glyph_dualglyph_fixedwidth_fp
+
+% Determine which of these will be needed in the end
+\prop_new:N\g__glyph_font_map_prop
+\seq_new:N\g__glyph_font_map_seq
+\int_new:N\g__glyph_tmpint_int % for testing only
+
+\cs_generate_variant:Nn\str_if_eq:nnTF {eeTF}
+\prg_new_conditional:Npnn \__glyph_bool_from_str:n #1 { p, TF } {
+  \str_if_eq:eeTF{\str_casefold:n{true}}{\str_casefold:n{#1}}{\prg_return_true:}{\prg_return_false:}
+}
+
+% Option Declaration
+\DeclareKeys[glyph] {
+  % Option storage
+  %% Normal fonts
+  fonts .code = \prop_put_from_keyval:Nn\g__glyph_fonts_list_prop{#1},
+
+  %% Fonts with two glyphs to represent one character
+  dualglyphFonts .code = \prop_put_from_keyval:Nn\g__glyph_dualglyph_fonts_list_prop{#1},
+  dualglyphFontsSecondaryColor .store = \g__glyph_dualglyph_secondarycolor_tl,
+
+  %% Options that affect all fonts
+  fixed .code = \bool_set:Nn\g__glyph_fixedwidth_bool{\__glyph_bool_from_str_p:n{#1}},
+  width .store = \g__glyph_fixedwidth_fp,
+
+  % Option usage
+  fonts .usage = load,
+  
+  dualglyphFonts .usage = load,
+  dualglyphFontsSecondaryColor .usage = load,
+
+  fixed .usage = load,
+  width .usage = load
+}
+
+% Default Values
+\SetKeys[glyph]{
+  %fonts = {Font Awesome 6 Pro Regular, Font Awesome 6 Pro Solid, Font Awesome 6 Brands},
+  %prefixes = {fa, fas, fab},
+  %dualGlyphFonts = {Font Awesome 6 Duotone},
+  %dualGlyphPrefixes = {fad},
+  dualglyphFontsSecondaryColor = {blue},
+  fixed = true, % for debugging
+  width = 1.25,
+}
+
+% Option Execution
+\ProcessKeyOptions[glyph]
+
+% Debug printing
+% \prop_show:N\g__glyph_fonts_list_prop
+% \prop_show:N\g__glyph_dualglyph_fonts_list_prop
+% \bool_show:N\g__glyph_fixedwidth_bool
+
+% Package Loading
+\RequirePackage{fontspec}
+\RequirePackage{glyph-messages}
+\RequirePackage{glyph-functions}
+
+% Main Code
+
+%% Option synthesis
+\__glyph_create_property_map:NNn\g__glyph_font_map_prop\g__glyph_fonts_list_prop{single}
+\__glyph_create_property_map:NNn\g__glyph_font_map_prop\g__glyph_dualglyph_fonts_list_prop{dual}
+
+\__glyph_create_seq_map:NNn\g__glyph_font_map_seq\g__glyph_fonts_list_prop{single}
+\__glyph_create_seq_map:NNn\g__glyph_font_map_seq\g__glyph_dualglyph_fonts_list_prop{dual}
+
+% \typeout{start~prop_show}
+% \prop_show:N\g__glyph_font_map_prop
+% \typeout{end~prop_show}
+
+\typeout{start~seq_show}
+\seq_show:N\g__glyph_font_map_seq
+\typeout{end~seq_show}
+
+% \typeout{start~seq_iterate}
+% \seq_map_inline:Nn\g__glyph_font_map_seq{
+%   \clist_set:Nn\l_tmpa_clist{#1}
+%   \clist_show:N\l_tmpa_clist
+% }
+% \typeout{end~seq_iterate}
+
+% \__glyph_debug_glyph_information:N\g__glyph_font_map_prop
+% \__glyph_debug_glyph_info:N\g__glyph_font_map_seq
+% \__glyph_parse_fonts:N\g__glyph_font_map_seq
+
+%% Remember that the goal is to have:
+%%  - \fooGlyph{glyph-name} --> A document-level command that is the basis for:
+%%  - \fooGlyphName --> where GlyphName is the sanitized glyph-name from above.
+%%  - \__glyph_put_glyph{Font Name}{single|dual}{glyph-name} that is font-agnostic and places whatever glyph it can by name.
+
+%% Declare Document Commands
+%% - Bootstrap package
+%%    - Create properties
+%%    - Create property maps
+%% - Generate document-level commands
+%%    - For each font specified in map files:
+%%      - Create the \fooGlyph{Font Name}{#1} command
+%%      - Read through each glyph in the font file, and for each glyph:
+%%        - Create \fooGlyphName, which calls \fooGlyph{Font Name}{glyph-name}
+%% Should the bootstrap command do all of these things?

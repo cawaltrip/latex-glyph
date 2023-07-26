@@ -1,0 +1,115 @@
+%% glyph-functions.sty
+%% Copyright 2023 Chris Waltrip
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License, either version 1.3
+% of this license or (at your option) any later version.
+% The latest version of this license is in
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Chris Waltrip.
+%
+% This work consists of all files listed in ../MANIFEST-LPPL.md.
+
+\IfPackageLoadedTF{glyph}
+    {}
+    {
+        \PackageError{glyph-functions}
+            {Improperly sourced}
+            {This is a package internal to glyph and should only be called by glyph itself.} 
+    }
+
+\ProvidesExplPackage{glyph-functions}{2023/07/11}{0.0.1}{Functions~for~glyph~package}
+
+\RequirePackage{glyph-functions-luatex}
+
+% Create the data structure we use internally (\g__glyph_fonts_prop and \g__glyph_dualglyph_fonts_prop)
+% Based on implementation: https://tex.stackexchange.com/a/71459/207967
+% Data structure format:
+%   Property {
+%     prefix = Property {
+%       font = <Font Name>,
+%       type = single|dual
+%     },
+%     ...
+%   }
+% The data structures I'm creating these new properties from are:
+%   Property {
+%     prefix1 = <Font Name 1>,
+%     ...
+%     prefixN = <Font Name N>
+%   }
+% Pseudo-code
+% for each property in original,
+%   create a new property in the new form
+%   put this property in a new property using prefix as key
+%% For now, the data structure is
+%   Property {
+%     prefix1 = CList{Font Name 1, type 1},
+%     ...
+%     prefixN = CList{Font Name N, type N}
+%   }
+\cs_new:Nn\__glyph_create_property_map:NNn{
+  \prop_clear:N\l_tmpa_prop % New property
+  \clist_clear:N\l_tmpa_clist % New value of key-value
+  
+  \prop_map_inline:Nn #2{
+    % \prop_put_from_keyval:Nn\l_tmpa_prop{
+    %   font = ##2,
+    %   type = #3
+    % }
+    % \prop_show:N\l_tmpa_prop
+    % \prop_put:Nnx\l_tmpb_prop {##1} {\l_tmpa_prop}
+    % \prop_show:N\l_tmpb_prop
+    % \prop_concat:NNN #1 #1 \l_tmpb_prop
+    \clist_set:Nn\l_tmpa_clist{##2, #3}
+    %\clist_show:N\l_tmpa_clist
+    \prop_put:Nnx\l_tmpa_prop {##1} {\l_tmpa_clist}
+    %\prop_show:N\l_tmpa_prop
+    \prop_concat:NNN #1 #1 \l_tmpa_prop
+  }
+}
+
+\cs_new:Nn\__glyph_create_seq_map:NNn{
+  \prop_map_inline:Nn #2{
+    \clist_clear:N\l_tmpa_clist
+    \clist_put_right:Nn\l_tmpa_clist{##1}
+    \clist_put_right:Nn\l_tmpa_clist{##2}
+    \clist_put_right:Nn\l_tmpa_clist{#3}
+    \seq_put_right:Nx #1 {\l_tmpa_clist}
+  }  
+}
+
+\cs_new_protected:Npn \__glyph_parse_fonts:N #1 {
+  % Takes in the font map sequence that we created earlier.
+  %   >  {fa,Font Awesome 6 Pro Regular,single}
+  %   >  {fas,Font Awesome 6 Pro Solid,single}
+  %   >  {fab,Font Awesome 6 Brands,single}
+  %   >  {fad,Font Awesome 6 Duotone,dual}
+  \seq_map_inline:Nn #1 {
+    \clist_set:Nn\l_tmpa_clist{##1}
+    \clist_show:N \l_tmpa_clist
+    \__glyph_parse_font:N\l_tmpa_clist
+  }
+  
+}
+
+\cs_new_protected:Nn\__glyph_bootstrap:{
+    %% - Bootstrap package
+    %%    - Create properties - Done in options to package
+    %%    - Create property maps - Done in \__glyph_create_property_map:NNn
+    %% - Generate document-level commands
+    %%    - For each font specified in map files:
+    %%      - Create the \fooGlyph{Font Name}{#1} command
+    %%      - Read through each glyph in the font file, and for each glyph:
+    %%        - Create \fooGlyphName, which calls \fooGlyph{Font Name}{glyph-name}
+    %% Should the bootstrap command do all of these things?
+
+    % Create the properties from the 
+}
+
+% \cs_new_protected:Nn\__glyph_

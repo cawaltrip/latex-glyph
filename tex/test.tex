@@ -1,0 +1,89 @@
+\documentclass[letterpaper]{article}
+
+% \errorcontextlines=5
+
+\usepackage[
+    fonts = {
+        fa = Font Awesome 6 Pro Regular,
+        fas = Font Awesome 6 Pro Solid,
+        fab = Font Awesome 6 Brands
+    },
+    dualglyphFonts = {
+        fad = Font Awesome 6 Duotone,
+    }
+]{glyph}
+
+\setmainfont{Helvetica Neue}
+\newfontfamily\FA{Font Awesome 6 Pro Regular}
+% \newcommand\foobarIcon[1]{{\fafont\char#1}}
+
+\begin{document}
+
+\section{Variable Testing}
+If there's variables that I've set that I want to test, they can go here.\par
+
+\section{Command Testing}
+Test different "internal" commands \(e.g., \verb|\fooGlyph{exclamation-mark}|\).
+% Remember, \fooGlyph{} is a generated CS.  It can already have the font information
+% embedded in it, because we have that information at the time of defining all of the
+% control sequences.  So it could call something like 
+% \__glyph_put_glyph{Font Name}{glyph-name}.  That function needs to know how to 
+% place a glyph using the given engine (e.g., LuaLaTeX, XeTeX).
+% Does the file glyph work? {\fafont\char"F15B}? Maybe yes, maybe no.
+% \ExplSyntaxOn
+% \__glyph_put_glyph:nnn{Foo}{single}{file}
+% \ExplSyntaxOff
+Is this a person walking? 
+{
+  \fontspec{Font Awesome 6 Pro Regular}
+  \symbol{128694}
+}
+
+Who knows?\par
+
+Next test of a person walking: 
+\ExplSyntaxOn
+\__glyph_put_glyph:nnn{Foo}{single}{person-walking}
+% Debugging & testing
+% \__glyph_debug_repeater:n{testingtesting123}
+\ExplSyntaxOff
+
+\section{Glyph Testing}
+Test glyph commands here (e.g., \verb|\fooExclamationMark|).
+
+
+\pagebreak
+\section{List of Glyphs}
+This is just a table of all of the glyphs font for each font loaded.
+
+% \begin{multicols}{4}\noindent
+%     \begin{luacode*}
+%     local f = fontloader.open('/Users/cawaltrip/Library/Fonts/Font Awesome 6 Pro-Regular-400.otf')
+%     local glyphs = {}
+%     for i = 0, f.glyphmax - 1 do
+%        local g = f.glyphs[i]
+%        if g then
+%            table.insert(glyphs, {name = g.name, unicode = g.unicode})
+%        end
+%     end
+%     table.sort(glyphs, function (a,b) return (a.unicode < b.unicode) end)
+%     for i = 1, #glyphs do
+%        tex.sprint(glyphs[i].unicode .. ": ")
+%        if (glyphs[i].unicode > 0) then
+%            tex.sprint("{\\FA\\char" .. glyphs[i].unicode .. "}");
+%        else
+%         -- Here the updated code: the first glyph table in LuaTeX printing ALL glyphs in a font!
+%         -- tex.sprint("{\\FA\\char\\directlua{tex.print(luaotfload.aux.slot_of_name(font.current(), [[" .. glyphs[i].name .. "]]))}}")
+%         -- luaotfload.aux.slot_of_name(font.current(), [[" .. glyphs[i].name .. "]])
+%          tex.sprint("OUTSIDE GLYPH RANGE")
+%        end
+%        tex.print(" {\\small(")
+%        tex.print(-2, glyphs[i].name )
+%        tex.sprint(')}\\\\')
+%     end
+%     fontloader.close(f)
+    
+%     \end{luacode*}
+% \end{multicols}
+
+\end{document}
