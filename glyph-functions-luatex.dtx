@@ -1,0 +1,209 @@
+% \iffalse meta-comment
+%
+% glyph-functions-luatex.dtx 
+%
+% Copyright © 2023 Chris Waltrip
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License (SPDX: LPPL), 
+% either version 1.3 of this license or (at your option) any 
+% later version. The latest version of this license is at
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Chris Waltrip.
+%
+% This work consists of all files listed in ./MANIFEST-LPPL.md.
+%
+%<*driver>
+\documentclass{l3doc}
+% Want to be able to print our own glyphs, so include us.
+\usepackage{glyph}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \GetFileInfo{glyph.sty}
+%
+% 
+% \title{The \pkg{glyph-funtions-luatex} package}
+% \author{Chris Waltrip\thanks{\href{https://github.com/cawaltrip}{\fabGithub/cawaltrip}}}
+% \date{Released \filedate}
+% \maketitle
+%
+% \begin{documentation}
+% \section{Introduction}
+% This package defines \hologo{LuaLaTeX}-specific functions to finish the
+% \pkg{glyph} package requirements.  This package defines the interface
+% defined in \pkg{glyph-functions}, namely \cs{@@_parse_font:N}, 
+% \cs{@@_font_debug_info:nn}, and creating a command sequence for 
+% \cs{@@_font_family}.  There are additional helper functions 
+% defined to complete this.
+%
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\pkg{glyph-functions-luatex} implementation}
+%
+% Start the \pkg{DocStrip} guards
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+% Identify the internal prefix (\hologo{LaTeX3} \pkg{DocStrip} convention)
+%    \begin{macrocode}
+%<@@=glyph>
+%    \end{macrocode}
+%
+% Most of the heavy lifting of this package is done in the Lua files included.
+% \subsection{Initialization}
+% Create a guard around all of the code in here so that it's only loaded
+% if \hologo{LuaTeX} is the engine calling this code. 
+%
+%    \begin{macrocode}
+\sys_if_engine_luatex:TF{
+  \RequirePackage{luatexbase}
+  \RequirePackage{luaotfload}
+  \RequirePackage{fontspec}
+  \RequirePackage{luacode}
+%    \end{macrocode}
+% \subsection{Loading Lua}
+%    \begin{macrocode}
+  \directlua{require('glyph')}
+%    \end{macrocode}
+%
+% ^^A    \begin{macrocode}
+% ^^A </init>
+% ^^A   \end{macrocode}
+%
+% \subsection{Parsing fonts}
+% \begin{macro}{\@@_parse_font:N}
+%   This is the workhouse function of this package.  It takes in a |CList| 
+%   with the following arguments.
+%   \begin{arguments}
+%     \item prefix for document-level command names.
+%     \item font name
+%     \item glyph type (single/dual)
+%   \end{arguments}
+%    \begin{macrocode}
+  \cs_new_protected:Npn\@@_parse_font:N #1 {
+    \tl_clear_new:N\l_glyph_prefix_tl
+    \tl_clear_new:N\l_glyph_font_tl
+    \tl_clear_new:N\l_glyph_type_tl
+    \int_zero_new:N\g_@@_font_id_int
+%    \end{macrocode}
+%   \cs{g_@@_font_id_int} will be used to store the font ID 
+%   until it can be passed to the generating functions.
+%    \begin{macrocode}
+    \clist_set:Nx\l_tmpa_clist{#1}
+
+    \tl_set:Nx\l_glyph_prefix_tl{\clist_item:Nn\l_tmpa_clist{1}}
+    \tl_set:Nx\l_glyph_font_tl{\clist_item:Nn\l_tmpa_clist{2}}
+    \tl_set:Nx\l_glyph_type_tl{\clist_item:Nn\l_tmpa_clist{3}}  
+
+    \group_begin:
+    \fontspec{\l_glyph_font_tl}
+    \int_gset:Nn\g_@@_font_id_int{\tex_fontid:D\tex_font:D}
+    \group_end:
+%    \end{macrocode}
+%   \pkg{fontspec} is used to switch to the font using only the
+%   name of the font. The font ID is retrieved and used for the
+%   remainder of the functions.
+%    \begin{macrocode}
+    \lua_now:e{u.create_font_family(
+      \int_use:N\g_@@_font_id_int,
+      "\luaescapestring{\l_glyph_prefix_tl}",
+      "\luaescapestring{\bool_to_str:N\g_@@_debug_output_bool}"
+    )}
+%    \end{macrocode}
+%   This Lua function creates the font family.  The font family name
+%   is well defined and so doesn't need to be returned in any way.
+%    \begin{macrocode}
+    \lua_now:e{u.create_icon_command(
+      "\luaescapestring{\l_glyph_font_tl}",
+      "\luaescapestring{\l_glyph_prefix_tl}",
+      "\luaescapestring{\l_glyph_type_tl}",
+      "\luaescapestring{\bool_to_str:N\g_@@_debug_output_bool}"
+    )}
+%    \end{macrocode}
+%   Generate the \cs{\meta{prefix}Glyph\meta{glyph-name}} command.
+%    \begin{macrocode}
+    \lua_now:e{u.create_glyph_commands(
+      \int_use:N\g_@@_font_id_int,
+      "\luaescapestring{\l_glyph_prefix_tl}",
+      "\luaescapestring{\l_glyph_type_tl}",
+      "\luaescapestring{\bool_to_str:N\g_@@_debug_output_bool}"
+    )}
+%    \end{macrocode}
+%   Generate all of the \cs{\meta{prefix}GlyphName} commands.
+%    \begin{macrocode}
+    \lua_now:e{u.create_showcase_command(
+      \int_use:N\g_@@_font_id_int,
+      "\luaescapestring{\l_glyph_prefix_tl}",
+      "\luaescapestring{__glyph_font_debug_info:nn}",
+      "\luaescapestring{\bool_to_str:N\g_@@_debug_output_bool}"
+    )}
+  }
+%    \end{macrocode}
+%   Define the command that dumps all the font and glyph information.
+% \end{macro}
+%
+% \begin{macro}{\@@_put_glyph_after_lookup:nnnn}
+%   This is the helper function that determines whether to call
+%   \cs{@@_put_glyph:nn} (for \emph{single glyphs}) or 
+%   \cs{@@_put_glyph:nnn} (for \emph{dual glyphs}). The Lua function 
+%   |get_glyph_index()| returns the codepoint to display.
+%   \begin{arguments}
+%     \item font ID
+%     \item font family
+%     \item glyph type (single/dual)
+%     \item glyph name
+%   \end{arguments}
+%    \begin{macrocode}
+  \cs_set:Npn\@@_put_glyph_after_lookup:nnnn #1#2#3#4 {
+    \tl_set:Nn\l_tmpa_tl{dual}
+    \tl_if_eq:NNTF#3\l_tmpa_tl {
+      \int_set:Nn\l_tmpa_int{\lua_now:e{u.get_glyph_index("\luaescapestring{#1}", "\luaescapestring{#4}", "\luaescapestring{-primary}")}} % This works?
+      \int_set:Nn\l_tmpb_int{\lua_now:e{u.get_glyph_index("\luaescapestring{#1}", "\luaescapestring{#4}", "\luaescapestring{-secondary}")}} % This works?
+      \@@_put_glyph:nnn{#2}{\l_tmpa_int}{\l_tmpb_int}
+    } {
+      \int_set:Nn\l_tmpa_int{\lua_now:e{u.get_glyph_index("\luaescapestring{#1}", "\luaescapestring{#2}")}} % This works?
+      \@@_put_glyph:nn{#2}{\l_tmpa_int}
+    }
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\@@_font_debug_info:nn}
+%   This is the function that writes out all of the glyph information.
+%   \begin{arguments}
+%     \item font ID
+%     \item font family
+%   \end{arguments}
+%    \begin{macrocode}
+  \cs_new_protected:Nn\@@_font_debug_info:nn{
+    \lua_now:e{u.debug_font(#1, "\luaescapestring{#2}")}
+  }
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Closing}
+% Finally, close the guard we created at the beginning of this submodule.
+%    \begin{macrocode}
+} {
+  \@@_error:n{engine-not-supported}
+}
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \PrintIndex

@@ -1,0 +1,144 @@
+% \iffalse meta-comment
+%
+% glyph-messages.dtx 
+%
+% Copyright © 2023 Chris Waltrip
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License (SPDX: LPPL), 
+% either version 1.3 of this license or (at your option) any 
+% later version. The latest version of this license is at
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Chris Waltrip.
+%
+% This work consists of all files listed in ./MANIFEST-LPPL.md.
+%
+%<*driver>
+\documentclass{l3doc}
+% Want to be able to print our own glyphs, so include us.
+\usepackage{glyph}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \GetFileInfo{glyph.sty}
+%
+% 
+% \title{The \pkg{glyph-messages} package}
+% \author{Chris Waltrip\thanks{\url{https://github.com/cawaltrip}}} ^^A TODO: Replace with \fabGithub
+% \date{Released \filedate}
+% \maketitle
+%
+% \begin{documentation}
+% \section{Introduction}
+% This submodule contains messages to print for the \pkg{glyph} package.
+% \end{documentation}
+%
+% \begin{implementation}
+%
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+%<@@=glyph>
+%    \end{macrocode}
+%
+% \section{\pkg{glyph-messages} implementation}
+% Custom message definitions to be used throughout the package.  These are 
+% just wrappers to underlying functions.  Implementation recommended by
+% Joseph Wright\footnote{see \url{https://tex.stackexchange.com/a/246962/207967}}
+% \begin{macro}{
+%   \@@_fatal:n
+%   \@@_fatal:nn
+%   \@@_fatal:nx
+%   \@@_fatal:nxx
+%   \@@_error:n
+%   \@@_error:nn
+%   \@@_error:nx
+%   \@@_error:nxx
+%   \@@_warning:n
+%   \@@_warning:nx
+%   \@@_warning:nx
+%   \@@_info:n
+%   \@@_info:nx
+%   \@@_info:nxx
+%   \@@_trace:n
+% }
+% \begin{arguments}
+%     \item Name of the message to send.
+% \end{arguments}
+%    \begin{macrocode}
+\cs_new:Npn \@@_fatal:n     { \msg_error:nn     {glyph} }
+\cs_new:Npn \@@_fatal:nn    { \msg_error:nnn    {glyph} }
+\cs_new:Npn \@@_fatal:nx    { \msg_error:nnx    {glyph} }
+\cs_new:Npn \@@_fatal:nxx   { \msg_error:nnxx   {glyph} }
+\cs_new:Npn \@@_error:n     { \msg_error:nn     {glyph} }
+\cs_new:Npn \@@_error:nn    { \msg_error:nnn    {glyph} }
+\cs_new:Npn \@@_error:nx    { \msg_error:nnx    {glyph} }
+\cs_new:Npn \@@_error:nxx   { \msg_error:nnxx   {glyph} }
+\cs_new:Npn \@@_warning:n   { \msg_warning:nn   {glyph} }
+\cs_new:Npn \@@_warning:nx  { \msg_warning:nnx  {glyph} }
+\cs_new:Npn \@@_warning:nxx { \msg_warning:nnxx {glyph} }
+\cs_new:Npn \@@_info:n      { \msg_info:nn      {glyph} }
+\cs_new:Npn \@@_info:nx     { \msg_info:nnx     {glyph} }
+\cs_new:Npn \@@_info:nxx    { \msg_info:nnxx    {glyph} }
+\cs_new:Npn \@@_trace:n     { \msg_trace:nn     {glyph} }
+%    \end{macrocode}
+% \end{macro}
+% \subsection{Message definitions}
+%    \begin{macrocode}
+\msg_new:nnnn{glyph}{font-prefix-mismatch}
+  {Number~of~fonts~and~prefixes~must~be~equal}
+  {
+    Each~font~specified~must~have~its~own~unique~prefix~
+    defined~as~well.
+  }
+%    \end{macrocode}
+%    \begin{macrocode}
+\msg_new:nnnn{glyph}{engine-not-supported}
+  {Document~engine~not~supported}
+  {
+    The~glyph~package~only~supports~Lua[La]TeX~currently.\\\\
+    You~must~change~your~typesetting~engine~to,~e.g.,~"luatex",~or~
+    "lualatex"~intead~of~"latex~,~"pdflatex",~or~"xetex"~to~continue.
+  }
+%    \end{macrocode}
+%    \begin{macrocode}
+\msg_new:nnnn{glyph}{glyph-not-found} % TODO: Fix glyphtable command.
+  {Could~not~find~requested~glyph~(#1)}
+  {
+    The~glyph~"#1"~wasn't~found.~
+    Check~that~the~name~of~the~glyph~is~correct.~
+    % A~table~of~all~glyphs~can~be~generated~using~the~\\glyphtable{#2}~command.
+  }
+%    \end{macrocode}
+%    \begin{macrocode}
+\msg_new:nnnn{glyph}{glyph-not-specified}
+  {No~glyph~was~specified}
+  {
+    A~glyph~must~be~specified~when~calling~(#1).
+  }
+%    \end{macrocode}
+%    \begin{macrocode}
+\msg_new:nnnn{glyph}{font-not-found}
+  {Could~not~find~font~(#1)}
+  {
+    The~specified~font~(#1)~was~not~found~on~the~system.~
+    Make~sure~it~is~installed~and~that~you're~passing~in~the~correct~arguments~to~glyph.
+  }
+\msg_new:nnn{glyph}{font-found}{Found~font~"#1"}
+%    \end{macrocode}
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \PrintIndex

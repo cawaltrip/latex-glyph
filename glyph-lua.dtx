@@ -1,0 +1,1299 @@
+% \iffalse meta-comment
+%<*internal>
+\iffalse
+%</internal>
+%
+% glyph.lua.dtx 
+%
+% Copyright © 2023 Chris Waltrip
+%
+% This work may be distributed and/or modified under the
+% conditions of the LaTeX Project Public License (SPDX: LPPL), 
+% either version 1.3 of this license or (at your option) any 
+% later version. The latest version of this license is at
+%   https://www.latex-project.org/lppl.txt
+% and version 1.3c or later is part of all distributions of LaTeX
+% version 2008 or later.
+%
+% This work has the LPPL maintenance status `maintained'.
+% 
+% The Current Maintainer of this work is Chris Waltrip.
+%
+% This work consists of all files listed in ./MANIFEST-LPPL.md.
+%<*internal>
+\fi
+\def\nameofplainTeX{plain}
+\ifx\fmtname\nameofplainTeX\else
+  \expandafter\begingroup
+\fi
+%</internal>
+%<*driver>
+\ProvidesFile{glyph-lua.dtx}[2023/08/04 glyph internal Lua script for LuaTeX implementation]
+\documentclass[full]{l3doc}
+\usepackage{glyph}
+\usepackage{hologo}
+
+\DoNotIndex{\\}
+\begin{document}
+  \DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \GetFileInfo{glyph.sty}
+%
+% \title{The \pkg{glyph} package: \LuaTeX{}-specific implementation}
+%
+% \author{Chris Waltrip\thanks{\href{https://github.com/cawaltrip}{\fabGithub/cawaltrip}}}
+% \date{Released \filedate}
+% \maketitle
+% \tableofcontents
+%
+% \begin{documentation}
+%
+% \section{Introduction}
+% In the initial version of \pkg{glyph}, Lua is doing a lot of heavy
+% lifting.  Most all of the functionality has been abstracted out to
+% it with \hologo{LuaLaTeX} being reserved for passing data structures 
+% around, and parsing user input.  All of the CS generation is handled
+% in Lua.
+%
+% \section{Functions}
+% The Lua functions can be broadly categorized into three groups,
+% \begin{itemize}
+%   \item command-generating functions,
+%   \item helper functions, and
+%   \item showcase implementation functions.
+% In the source code, but omitted here is the namespace for every function.
+% The only namespace used is called |u| (i.e., \emph{userspace}).
+% \end{itemize}
+% \subsection{Command-generating Functions}
+% \begin{function}{create_glyph_commands()}
+%   \begin{syntax}
+%       \cmd{create_glyph_commands}(\marg{fontId}, \marg{prefix}, \marg{gType}, \oarg{debug})
+%   \end{syntax}
+% This function generates all of the individual glyph commands for a font.
+% Given,
+% \begin{arguments}
+%   \item \marg{fontId}, the \TeX{} font number,
+%   \item \marg{prefix}, the prefix specified by the user,
+%   \item \marg{gType}, the string of either \enquote{single} or 
+%           \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only), and
+%   \item \oarg{debug}, a boolean to print debug output to console,
+% \end{arguments}
+% the function iterates through each glyph in the font and, with few 
+% exceptions, creates a command for it based on the glyph name defined 
+% in the font.  The exceptions to this are characters in the C0/C1 Unicode 
+% blocks, and glyph names that have numbers in them.  For the latter, the 
+% glyph name is sanitized in a standard way.  Under the hood we're storing 
+% the unicode codepoint, so we don't care about retaining the unmodified 
+% glyph name.
+% \end{function}
+%
+% \begin{function}{create_icon_command()}
+%   \begin{syntax}
+%       \cmd{create_icon_command}(\marg{fontId}, \marg{prefix}, \marg{gType}, \oarg{debug})
+%   \end{syntax}
+% This function creates the document-level generic CS that users can use to 
+% return a glyph via its internal name, instead of the sanitized version 
+% created by \cmd{create_glyph_commands}.
+% Given,
+% \begin{arguments}
+%   \item \marg{fontId}, the \TeX{} font number,
+%   \item \marg{prefix}, the prefix specified by the user,
+%   \item \marg{gType}, the string of either \enquote{single} or 
+%           \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only), and
+%   \item \oarg{debug}, a boolean to print debug output to console,
+% \end{arguments}
+% creates a command of the form \cs[no-index]{\marg{prefix}Glyph}.  This command stores 
+% the \marg{fontId}, \meta{font family}, and \marg{gType}, so that a user
+% has a simple interface to placing glyphs.
+% \end{function}
+%
+% \begin{function}{create_font_family()}
+%   \begin{syntax}
+%       \cmd{create_font_family}(\marg{fontId}, \marg{prefix}, \oarg{debug})
+%   \end{syntax}
+% This function creates the internally-used font family name.
+% Given,
+% \begin{arguments}
+%   \item \marg{fontId}, the \TeX{} font number,
+%   \item \marg{prefix}, the prefix specified by the user,
+%   \item \oarg{debug}, a boolean to print debug output to console,
+% \end{arguments}
+% the function gets the font's \emph{PostScript} name from the \marg{fontId},
+% and uses it as the definition of the font family.  Behind the scenes, 
+% \pkg{fontspec} is being used to create the font family.  The name of the
+% font family is programmatically generated based on the \marg{prefix} 
+% specified by the user.
+% \end{function}
+%
+% \begin{function}{create_showcase_command()}
+%   \begin{syntax}
+%       \cmd{create_showcase_command}(\marg{fontId}, \marg{prefix}, \marg{debugCS}, \oarg{debug})
+%   \end{syntax}
+% This function creates the debug command for a single font.
+% Given,
+% \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{prefix}, the font prefix specified by the user
+%     \item \marg{debugCS}, the control sequence name that calls the
+%           function to print all glyph info
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+% \end{arguments}
+% create a \TeX{} call to create a command in the form described in 
+% the section for \cmd{generate_showcase_name}.  The \marg{fontId},
+% and \marg{debugCS} values are embedded into the command so that you don't
+% need to know anything about them.
+% \end{function}
+%
+% \subsection{Showcase (implementation) Functions}
+% The showcase functions are what implement printing the glyph tables to 
+% the document.
+% \begin{function}{showcase_font()}
+%   \begin{syntax}
+%       \cmd{showcase_font}(\marg{fontId}, \marg{fontFamilyCommand}, \oarg{debug})
+%   \end{syntax}
+% \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the font given by \marg{fontId}
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+% \end{arguments}
+%   This is the managing function that calls all of the other functions 
+%   required to print all of the glyph information about a font. Ultimately,
+%   it creates the following:
+%   \begin{enumerate}
+%     \item a new \tn{section} heading with the font name as the title,
+%     \item a sample of the font (currently this is lowercase a-z),
+%     \item for each Unicode block, if there is a glyph defined in its
+%           range, create a new \tn{subsection}, and display the glyphs in
+%           \tn{normal} size.
+%     \item create a \tn{subsection} and for every printable glyph in the
+%           font, create a small box that contains,
+%       \begin{itemize}
+%         \item the glyph name,
+%         \item the glyph itself at \tn{huge} font size, and
+%         \item the Unicode codepoint in hex.
+%       \end{itemize}
+%   \end{enumerate}
+% \end{function}
+%
+% \begin{function}{showcase_sample()}
+%   \begin{syntax}
+%       \cmd{showcase_sample}(\marg{glyphs}, \marg{start}, \marg{finish}, \marg{fontFamilyCommand}, \oarg{debug})
+%   \end{syntax}
+% \begin{arguments}
+%     \item \marg{glyphs}, the glyph table for the font
+%     \item \marg{start}, the index to start printing the sample at
+%     \item \marg{finish}, the index to finish printing the sample at
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+% \end{arguments}
+%   This function prints the any glyph found in \marg{glyphs} that in the range
+%   of \marg{start} to \marg{finish} (inclusive).
+% \end{function}
+%
+% \begin{function}{showcase_block()}
+%   \begin{syntax}
+%       \cmd{showcase_block}(\marg{glyphs}, \marg{block}, \marg{fontFamilyCommand}, \oarg{debug})
+%   \end{syntax}
+% \begin{arguments}
+%     \item \marg{glyphs}, the glyph table for the font
+%     \item \marg{block}, the Unicode block
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+% \end{arguments}
+%   This function prints glyphs found in the range specified by the 
+%   Unicode block as a \tn{subsection} with the blocks name as the title.
+%   It specifically only prints out this information if a glyph is found
+%   anywhere in the block.  This is because there's more than 300 blocks
+%   defined by Unicode currently which would create a lot of wasted space
+%   as most fonts are going to have glyphs in each block defined.
+% \end{function}
+%
+% \begin{function}{showcase_glyph()}
+%   \begin{syntax}
+%       \cmd{showcase_glyph}(\marg{glyph}, \marg{fontFamilyCommand}, \oarg{debug})
+%   \end{syntax}
+% \begin{arguments}
+%     \item \marg{glyph}, the glyph to print
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+% \end{arguments}
+%   This functions prints a specific \marg{glyph} inside a box with the
+%   glyph's name and Unicode codepoint in hex.
+% \end{function}
+% 
+% \subsection{Helper Functions}
+% Helper functions themselves can be further categorized into the following groups:
+% \begin{itemize}
+%   \item name-generating functions,
+%   \item input-validation functions, and
+%   \item general helper functions.
+% \end{itemize}
+% \subsubsection{Name-generating Functions}
+% \begin{function}{generate_glyph_command_name()}
+%   \begin{syntax}
+%       \cmd{senerate_glyph_command_name}(\marg{glyphName}, \marg{prefix}, \marg{gType})
+%   \end{syntax}
+% Returns the sanitized version of the document-level command name to be created.
+% Given, 
+% \begin{arguments}
+%   \item \marg{glyphName}, the glyph name to use
+%   \item \marg{prefix}, the font prefix specified by the user, and
+%   \item \marg{gType}, the string of either \enquote{single} or 
+%           \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only),
+% \end{arguments}
+% return a string similar to |prefixSanitizedGlyphName|.  Will not return a 
+% name that has characters that can't normally be used in a command 
+% sequence after replacing numbers with their spelt out versions, and hyphens.
+% \end{function}
+% \begin{function}{generate_icon_command_name()}
+%   \begin{syntax}
+%       \cmd{generate_icon_command_name}(\marg{prefix})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{prefix}, the font prefix specified by the user,
+% \end{arguments}
+% return the string |GlyphFF|\marg{prefix}.
+% \end{function}
+% \begin{function}{generate_font_family_name()}
+%   \begin{syntax}
+%       \cmd{generate_font_family_name}(\marg{glyphName}, \marg{prefix}, \marg{gType})
+%   \end{syntax}
+% Returns the sanitized version of the document-level command name to be created.
+% Given, 
+% \begin{arguments}
+%   \item \marg{prefix}, the font prefix specified by the user, and
+% \end{arguments}
+% return a string in the format |GlyphFF|\marg{prefix}.
+% \end{function}
+% \begin{function}{generate_showcase_name()}
+%   \begin{syntax}
+%       \cmd{generate_showcase_name}(\marg{prefix})
+%   \end{syntax}
+%   This defines the name of the command you can use to print glyph information
+%   for a font. 
+% Given,
+% \begin{arguments}
+%     \item \marg{prefix}, the font prefix specified by the user
+% \end{arguments}
+% returns a string of the form |\GlyphFD|\marg{prefix}.
+% \end{function}
+%
+% \subsubsection{Input Validation Functions}
+%
+% \begin{function}{sanitize_glyph()}
+%   \begin{syntax}
+%       \cmd{sanitize_glyph}(\marg{glyphName})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{glyphName}, a (partially edited) glyph name,
+% \end{arguments}
+% return a version that has replaced all numbers with their spelt out
+% versions\footnote{Does not do compound numbers. E.g., |100| is |OneZeroZero|, and not |OneHundred|},
+% with hyphens removed and the letter after a hyphen capitalized.
+% \end{function}
+% 
+% \begin{function}{in_printable_range()}
+%   \begin{syntax}
+%       \cmd{in_printable_range}(\marg{num})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{num}, a Unicode codepoint,
+% \end{arguments}
+% checks if it's in the \emph{C0/C1} Unicode blocks and returns false if so.
+% \end{function}
+% 
+% \begin{function}{has_only_valid_characters()}
+%   \begin{syntax}
+%       \cmd{has_only_valid_characters}(\marg{commandString})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{commandString}, the sanitized glyph name,
+% \end{arguments}
+% return false if the string contains anything other than the ASCII 
+% alphabetical letters (|[A-Za-z]|).
+% \end{function}
+%
+% \subsubsection{General Helper Functions}
+% Things like the format of command names are stored as helper functions
+% so they can be called whereever needed without passing extra information
+% around.
+%
+% \begin{function}{debug()}
+%   \begin{syntax}
+%       \cmd{debug}(\marg{doDebug}, \marg{string}, \oarg{indentLevel})
+%   \end{syntax}
+% \begin{arguments}
+%     \item \marg{doDebug}, a boolean to determine if debug message is printed
+%     \item \marg{message}, string to print
+%     \item \oarg{indentLevel}, optional integer to indent the text by (each 
+%            each integer adds four space).
+% \end{arguments}
+% If \marg{doDebug} is |false|, then nothing is done and this function is 
+% equivalent to a no-op.  If true, then the \marg{message} string is printed
+% to the screen, indented by four spaces for each \oarg{indentLevel}.
+% \end{function}
+% 
+% \begin{function}{get_glyph_base_name()}
+%   \begin{syntax}
+%       \cmd{get_glyph_base_name}(\marg{glyphName}, \oarg{noTex})
+%   \end{syntax}
+% Useful mainly for \emph{dual glyphs}, this is used to strip away unique
+% parts of the glyph name. By default returns the name to the \TeX{} stream,
+% but can be returned instead to a Lua function.
+% Given, 
+% \begin{arguments}
+%   \item \marg{glyphName}, the glyph to strip the appendix from, and
+%   \item  \oarg{noTex}, boolean to determine how to return the basename,
+% \end{arguments}
+% strip |-primary| and |-secondary| from the glyph name and return it.
+% Glyph names without either appendix are returned unchanged.  If 
+% \oarg{noTex} is passed, then return the basename, otherwise, print 
+% it to the \TeX{} stream.
+% \end{function}
+% 
+% \begin{function}{get_glyph_index()}
+%   \begin{syntax}
+%       \cmd{get_glyph_index}(\marg{fontId}, \marg{glyphName}, \oarg{appendix})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{fontId}, the \TeX{} font number,
+%   \item \marg{glyphName}, the glyph name as defined in the font, and
+%   \item \oarg{appendix}, a string to append to \marg{glyphName},
+% \end{arguments}
+% this finds the Unicode codepoint (if it exists) and returns it.  The 
+% \oarg{appendix} argument is used for \emph{dual glyph} fonts to add 
+% the part removed in \cmd{generate_glyph_command_name} in order to search for
+% the glyph properly.  Iterates through the glyphs in the font defined
+% with \marg{fontId} and returns the index if found or |nil| otherwise.
+% \end{function}
+% \begin{function}{collect_glyphs()}
+%   \begin{syntax}
+%       \cmd{collect_glyphs}(\marg{fontId})
+%   \end{syntax}
+% Given, 
+% \begin{arguments}
+%   \item \marg{fontId}, the \TeX{} font number,
+% \end{arguments}
+% iterates through all Unicode codepoints and for all printable glyphs adds 
+% them to table and returns the table.
+% \end{function}
+% 
+% \begin{function}{get_unicode_blocks()}
+%   \begin{syntax}
+%       \cmd{get_unicode_blocks}
+%   \end{syntax}
+%   Provides the a list of Unicode blocks with their name, starting index,
+%   and ending index.
+% \end{function}
+%
+
+% \end{documentation}
+%
+% \begin{implementation}
+%
+% \section{\texttt{glyph.lua} Implementation}
+% The source code is organized in the same way it's described in
+% the user-facing documentation.
+% \subsection{Namespace}
+% All of the functions are described in a local namespace to avoid collisions
+% globally.
+%    \begin{macrocode}
+%<*package>
+%    \end{macrocode}
+%    \begin{macrocode}
+%<*lua>
+%    \end{macrocode}
+%    \begin{macrocode}
+userdata = userdata or {}
+u = userdata
+
+%    \end{macrocode}
+% \subsection{Command-generating Functions}
+% These are the functions that do most of the work.  They call out
+% to all of the helper functions where needed.
+% \begin{macro}{create_glyph_commands()}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{prefix}, the prefix specified by the user
+%     \item \marg{gType}, the string of either \enquote{single} or 
+%               \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only)
+%     \item \oarg{debug}, a boolean to print debug output to console
+%   \end{arguments}
+%    \begin{macrocode}
+function u.create_glyph_commands(fontId, prefix, gType, debug)
+  local d = debug
+
+  u.debug(d, "create_glyph_commands(fontId="..fontId..", prefix="..prefix..", gType="..gType..")")
+
+  local glyphs = u.collect_glyphs(fontId)
+
+  for _, g in ipairs(glyphs) do
+    glyphCSBase = u.generate_glyph_command_name(g.name, prefix, gType)
+    baseName = u.get_glyph_base_name(g.name, true)
+    if glyphCSBase then
+      fontFamilyCS = u.generate_font_family_name(prefix)
+      primaryCodePoint = g.unicode
+      glyphCS = "\\" .. glyphCSBase
+      glyphCSDef = "\\NewDocumentCommand{" .. glyphCS .. "}{}"
+      if (gType == "dual") then
+%    \end{macrocode}
+% This assumes a secondary will be found.
+%    \begin{macrocode}
+        secondaryCodePoint = u.get_glyph_index(fontId, baseName, "-secondary")
+        glyphCSDef = glyphCSDef .. "{\\__glyph_put_glyph:nnn{" .. fontFamilyCS .. "}{" .. primaryCodePoint .. "}{" .. secondaryCodePoint .. "}}"
+      else
+        glyphCSDef = glyphCSDef .. "{\\__glyph_put_glyph:nn{" .. fontFamilyCS .. "}{" .. primaryCodePoint .. "}}"
+      end
+
+      u.debug(d, glyphCSDef, 1)
+      tex.sprint(luatexbase.catcodetables.expl, glyphCSDef)
+    end
+  end
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{create_icon_command}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{prefix}, the prefix specified by the user
+%     \item \marg{gType}, the string of either \enquote{single} or 
+%           \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only)
+%     \item \oarg{debug}, a boolean to print debug output to console
+%   \end{arguments}
+%    \begin{macrocode}
+function u.create_icon_command(fontId, prefix, gType, debug)
+  local d = debug
+
+  u.debug(d, "create_icon_command(fontId="..fontId..", prefix="..prefix..", gType="..gType..")")
+
+  iconCS = "\\" .. u.generate_icon_command_name(prefix)
+  fontFamilyCS = u.generate_font_family_name(prefix)
+
+  iconCSDef = "\\NewDocumentCommand{" .. iconCS .. "}{m}{\\__glyph_put_glyph_after_lookup:nnnn{" .. fontId .. "}{" .. fontFamilyCS .. "}{" .. gType .."}{#1}}"
+
+  u.debug(d, iconCSDef, 1)
+  tex.sprint(luatexbase.catcodetables.expl, iconCSDef)
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{create_font_family()}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{prefix}, the prefix specified by the user
+%     \item \oarg{debug}, a boolean to print debug output to console
+%   \end{arguments}
+%    \begin{macrocode}
+function u.create_font_family(fontId, prefix, debug)
+  local d = debug
+
+  local f = font.getfont(fontId) or nil
+  if not f then return end
+  
+  local fontPsName = f.psname
+  local fontFamily = "\\" .. u.generate_font_family_name(prefix)
+  local ffCommandDef = "\\newfontfamily" .. fontFamily .. "{" .. fontPsName .. "}"
+  u.debug(d, ffCommandDef)
+  
+  tex.sprint(ffCommandDef)
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{create_showcase_command()}
+% Generates the document-level commands used to print the glyph information
+% for each glyph in a font.
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{prefix}, the font prefix specified by the user
+%     \item \marg{debugCS}, the control sequence name that calls the
+%           function to print all glyph info
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+%   \end{arguments}
+%    \begin{macrocode}
+function u.create_showcase_command(fontId, prefix, debugCS, debug)
+  local d = debug or false
+  if (d == "false") then d = false end
+
+  local f = font.getfont(fontId) or nil
+  if (not f) then return end
+
+  local explDebugName = "\\" .. debugCS
+
+  local debugCommandName = u.generate_showcase_name(prefix)
+  local fontFamilyCommand = u.generate_font_family_name(prefix)
+  local debugCommandDef = "\\NewDocumentCommand{\\" .. debugCommandName .. "}{}{" .. explDebugName .. "{" .. fontId .. "}{" .. fontFamilyCommand .. "}}"
+  u.debug(d, debugCommandDef)
+  tex.sprint(debugCommandDef)
+end
+  
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Showcase (Implementation) Functions}
+% 
+% \begin{macro}{showcase_font()}
+%   Print out all details about a font.  This creates a new section with the
+%   fonts name as the title and then:
+%   \begin{enumerate}
+%     \item Displays a small sample of the font (lowercase a-z).
+%     \item Goes through each Unicode-defined block and if there are glyphs 
+%           defined in that range it creates a subsection for that block and 
+%           prints all the glyphs out.
+%     \item Creates a subsection called "Catalog of Glyphs" which displays
+%           each glyph in its own box with its name and Unicode codepoint
+%           in hex.
+%   \end{enumerate}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the font given by \marg{fontId}
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+%   \end{arguments}
+%   Also see:
+%   \begin{itemize}
+%     \item \cmd{showcase_sample}
+%     \item \cmd{showcase_block}
+%     \item \cmd{showcase_glyph}
+%     \item \cmd{get_unicode_blocks}
+%   \end{itemize}
+%    \begin{macrocode}
+function u.showcase_font(fontId, fontFamilyCommand, debug)
+  local d = debug or false
+  if (d == "false") then d = false end
+
+  local f = font.getfont(fontId) or nil
+  if not f then u.debug(d, "could not load font for debugging"); return end
+
+  local glyphs = u.collect_glyphs(fontId)
+  if not glyphs then u.debug(d, "could not get glyphs to debug"); return end
+
+  local unicodeBlocks = u.get_unicode_blocks()
+  u.debug(d, "#unicodeBlocks: " .. table.getn(unicodeBlocks))
+  u.debug(d, "#glyphs: " .. table.getn(glyphs))
+
+  tex.sprint("\\pagebreak")
+  tex.sprint("\\section{" .. f.fullname .. "}")
+  tex.sprint("This font has " .. table.getn(glyphs) .. " glyphs. They will be shown below first as a sample, then by Unicode block, and then finally individually with Unicode codepoints.\\par")
+
+  u.showcase_sample(glyphs, 97, 122, fontFamilyCommand)
+  tex.sprint("\\par")
+
+  tex.sprint("\\subsection{Unicode Blocks}")
+  for _,block in ipairs(unicodeBlocks) do
+    u.showcase_block(glyphs, block, fontFamilyCommand)
+  end
+
+  tex.sprint("\\subsection{Catalog of Glyphs}")
+  local tcbSet = "enhanced, size=small, center, center title, halign=center, halign lower=center, "
+  tcbSet = tcbSet .. "colback=red!5!white, frame style={left color=red!75!black, right color=blue!75!black}"
+  tex.sprint("\\tcbset{" .. tcbSet .. "}")
+  tex.sprint("\\begin{multicols}{4}")
+  for _,g in ipairs(glyphs) do
+    if u.in_printable_range(g.unicode) then
+      u.showcase_glyph(g, fontFamilyCommand)
+    end
+  end
+  tex.sprint("\\end{multicols}")
+  tex.sprint("\\restoregeometry")
+end
+  
+%    \end{macrocode}
+% \end{macro}
+%  
+% \begin{macro}{showcase_sample()}
+%   Prints out glyphs in a specific small range.  This is used to provide
+%   a small sample of the font at the beginning of the \cmd{showcase_font} output.
+%   \begin{arguments}
+%     \item \marg{glyphs}, the glyph table for the font
+%     \item \marg{start}, the index to start printing the sample at
+%     \item \marg{finish}, the index to finish printing the sample at
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+%   \end{arguments}
+%    \begin{macrocode}
+function u.showcase_sample(glyphs, start, finish, fontFamilyCommand, debug)
+  local d = debug or false
+  if (d == "false") then d = false end
+  
+  for _, g in ipairs(glyphs) do
+    if (g.unicode >= start) and (g.unicode <= finish) then
+      local sampleCommand = "{\\" .. fontFamilyCommand .. "\\Uchar" .. g.unicode .. "\\ }"
+      u.debug(d, sampleCommand, 1)
+      tex.sprint(sampleCommand)
+    end
+  end
+end
+  
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{showcase_block()}
+%   Prints out glyphs in a specific Unicode block.  When printing, use a 
+%   counter so that the section heading is printed only once, and only if
+%   there are glyphs in that range to print (there's more than 300 blocks)
+%   and I would imagine that for a fair portion of fonts they aren't defined).
+%   \begin{arguments}
+%     \item \marg{glyphs}, the glyph table for the font
+%     \item \marg{block}, the Unicode block
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+%   \end{arguments}
+%    \begin{macrocode}
+function u.showcase_block(glyphs, block, fontFamilyCommand, debug)
+  local d = debug or false
+  if (d == "false") then d = false end
+  local title = block.name .. " (U+" .. string.format("%04x", block.first):upper() .. " - U+" .. string.format("%04x", block.last):upper() ..")"
+  local glyphCounter = 0
+  local marker = ""
+
+  for _, g in ipairs(glyphs) do
+    if (g.unicode) and
+        (g.unicode >= block.first) and
+        (g.unicode <= block.last) then
+      glyphCounter = glyphCounter + 1
+      if (glyphCounter == 1) then
+        tex.sprint("\\subsubsection{" .. title .. "}")
+      end
+      if (block.name == "Combining Diacritical Marks" or
+          block.name == "Combining Diacritical Marks Extended") then
+        marker = "o"
+      end
+      local blockCommand = "{\\" .. fontFamilyCommand .. "\\ " .. marker .. "\\Uchar" .. g.unicode .. "}"
+      u.debug(d, blockCommand, 1)
+      tex.sprint(blockCommand)
+    end
+  end
+end
+  
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{showcase_glyph()}
+%   Prints out a single glyph.  This displays a box (using \pkg{tcolorbox}) 
+%   with the name of the glyph as a header, a \tn{huge}-sized glyph as the 
+%   body and the Unicode codepoint in hex as the footer.
+%   \begin{arguments}
+%     \item \marg{glyph}, the glyph to print
+%     \item \marg{fontFamilyCommand}, the font family CS name for displaying
+%           the glyphs
+%     \item \oarg{debug} boolean to determine whether to show debug messages
+%   \end{arguments}
+%    \begin{macrocode}
+function u.showcase_glyph(glyph, fontFamilyCommand, debug)
+  local d = debug or false
+  if (d == "false") then d = false end
+  
+  local preamble = "\\begin{tcolorbox}[title=" .. glyph.name .. "]"
+  local glyphValue = "{\\" .. fontFamilyCommand .. "\\huge{\\Uchar" .. glyph.unicode .. "}}"
+  local unicodeValue = "\\tcblower{\\bfseries U+" .. string.format("%04x", glyph.unicode):upper() .. "}"
+  local postamble = "\\end{tcolorbox}"
+  local glyphCommand = preamble .. glyphValue .. unicodeValue .. postamble
+  u.debug(d, glyphCommand, 1)
+  tex.sprint(glyphCommand)
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Helper Functions}
+% \subsubsection{Name-generating Functions}
+%
+% \begin{macro}{generate_glyph_command_name()}
+%   \begin{arguments}
+%     \item \marg{glyphName}, the glyph name to use
+%     \item \marg{prefix}, the font prefix specified by the user
+%     \item \marg{gType}, the string of either \enquote{single} or 
+%           \enquote{dual} to indicate whether the glyph name needs to be 
+%           massaged before being displayed (for \emph{dual glyph} only)
+%   \end{arguments}
+%    \begin{macrocode}
+function u.generate_glyph_command_name(glyphName, prefix, gType)
+  if (gType == "dual") then
+    glyphName, count = string.gsub(glyphName, "%-primary$", "")
+    if (count == 0) then return nil end
+  end
+
+  local commandString = u.sanitize_glyph(glyphName)
+  commandString = prefix:lower() .. "-" .. commandString
+  commandString = commandString:gsub('-(%a)', string.upper)
+  if not u.has_only_valid_characters(commandString) then return nil, nil end
+  return commandString, glyphName
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{generate_icon_command_name()}
+%   \begin{arguments}
+%     \item \marg{prefix}, the font prefix specified by the user
+%   \end{arguments}
+%    \begin{macrocode}
+function u.generate_icon_command_name(prefix)
+  return prefix:lower() .. "Glyph"
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{generate_font_family_name()}
+%   \begin{arguments}
+%     \item \marg{prefix}, the font prefix specified by the user
+%   \end{arguments}
+%    \begin{macrocode}
+function u.generate_font_family_name(prefix)
+  return "GlyphFF" .. prefix:upper()
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{generate_showcase_name()}
+% Generates the command name for debugging a font based on prefix.
+%   \begin{arguments}
+%     \item \marg{prefix}, the font prefix specified by the user
+%   \end{arguments}
+%    \begin{macrocode}
+function u.generate_showcase_name(prefix)
+  return "GlyphFD" .. prefix:upper()
+end
+  
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{Input Validation Functions}
+% \begin{macro}{sanitize_glyph()}
+%   \begin{arguments}
+%     \item \marg{glyphName}, a (partially edited) glyph name
+%   \end{arguments}
+%    \begin{macrocode}
+function u.sanitize_glyph(glyphName)
+  local glyphString = glyphName
+  if string.find(glyphName, "%d") then
+    local replacementTable = {
+      ["0"] = "Zero",
+      ["1"] = "One",
+      ["2"] = "Two",
+      ["3"] = "Three",
+      ["4"] = "Four",
+      ["5"] = "Five",
+      ["6"] = "Six",
+      ["7"] = "Seven",
+      ["8"] = "Eight",
+      ["9"] = "Nine"
+    }
+    glyphString = glyphString:gsub("%d", replacementTable)
+  end
+  return glyphString
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{in_printable_range()}
+%   \begin{arguments}
+%     \item \marg{num}, a Unicode codepoint,
+%   \end{arguments}
+%    \begin{macrocode}
+function u.in_printable_range(num)
+  if (num <= 31) or 
+      (num == 127) or 
+      ((num >= 128) and (num <= 159)) then
+    return false
+  end
+  return true
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{has_only_valid_characters()}
+%   \begin{arguments}
+%     \item \marg{commandString}, the sanitized glyph name
+%   \end{arguments}
+%    \begin{macrocode}
+function u.has_only_valid_characters(commandString)
+  if commandString:match("%A") then return false end
+  return true
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsubsection{General Helper Functions}
+%
+% \begin{macro}{debug()}
+% A simple wrapper to print debug statements while keeping the code clean.
+% This is the only \emph{actual} debug function in this file.
+%   \begin{arguments}
+%     \item \marg{doDebug}, a boolean to determine if debug message is printed
+%     \item \marg{message}, string to print
+%     \item \oarg{indentLevel}, optional integer to indent the text by (
+%            each integer adds four spaces).
+%   \end{arguments}
+%    \begin{macrocode}
+function u.debug(doDebug, message, indentLevel)
+  doDebug = doDebug or false
+  if (doDebug == "false") then doDebug = false end
+  if (doDebug == "true") then doDebug = true end
+  if (doDebug) then
+    local indentSize = 4
+    indentLevel = indentLevel or 0
+    local indent = string.rep(" ", indentSize * indentLevel)
+    print(indent .. message)
+  end
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{get_glyph_base_name()}
+%   \begin{arguments}
+%     \item \marg{glyphName}, the glyph to strip the appendix from
+%     \item  \oarg{noTex}, boolean to determine how to return the basename
+%   \end{arguments}
+%    \begin{macrocode}
+function u.get_glyph_base_name(glyphName, noTex)
+  noTex = noTex or false
+
+  local baseName = glyphName
+  matchP = "%-primary$"
+  matchS = "%-secondary$"
+
+  baseName, count = baseName:gsub(matchP, "")
+  if (count == 0) then
+    baseName = baseName:gsub(matchS, "")
+  end
+
+  if not noTex then
+    tex.sprint(luatexbase.catcodetables.expl, baseName)
+  else
+    return baseName
+  end
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{get_glyph_index()}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%     \item \marg{glyphName}, the glyph name as defined in the font
+%     \item \oarg{appendix}, a string to append to \marg{glyphName}
+%   \end{arguments}
+%    \begin{macrocode}
+function u.get_glyph_index(fontId, glyphName, appendix)
+  appendix = appendix or nil
+  if appendix then glyphName = glyphName .. appendix end
+  local f = font.getfont(fontId) or nil
+  if not f then return nil end
+
+  for name, index in pairs(f.resources.unicodes) do
+    if (glyphName == name) then return index end
+  end
+  return nil
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{collect_glyphs()}
+%   \begin{arguments}
+%     \item \marg{fontId}, the \TeX{} font number
+%   \end{arguments}
+%    \begin{macrocode}
+function u.collect_glyphs(fontId)
+  local f = font.getfont(fontId) or nil
+  if not f then return end
+
+  local glyphTable = {}
+  for name, index in pairs(f.resources.unicodes) do
+    if u.in_printable_range(index) then
+      table.insert(glyphTable, {name = name, unicode = index})
+    else
+      u.debug(d, "glyph was not in printable range.  index = " .. index)
+    end
+  end
+  table.sort(glyphTable, function(a,b) return (a.unicode < b.unicode) end)
+  return glyphTable
+end
+
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{get_unicode_blocks()}
+%   Returns the list of defined Unicode blocks.  The data structure provides
+%   the first and last indices for the block as well as the name of the block.
+%   This list of blocks was obtained from Unicode, Inc. at:
+% ^^A   \url{http://www.unicode.org/Public/UNIDATA/Blocks.txt}.
+%   The version used below is 15.0.0 (2022-01-28).  Its use is covered under
+%   the license found here:
+% ^^A  \url{https://www.unicode.org/license.txt}.
+%    \begin{macrocode}
+function u.get_unicode_blocks()
+  unicodeBlocks = {
+    {first=0, last=127, name="Basic Latin"},
+    {first=128, last=255, name="Latin-1 Supplement"},
+    {first=256, last=383, name="Latin Extended-A"},
+    {first=384, last=591, name="Latin Extended-B"},
+    {first=592, last=687, name="IPA Extensions"},
+    {first=688, last=767, name="Spacing Modifier Letters"},
+    {first=768, last=879, name="Combining Diacritical Marks"},
+    {first=880, last=1023, name="Greek and Coptic"},
+    {first=1024, last=1279, name="Cyrillic"},
+    {first=1280, last=1327, name="Cyrillic Supplement"},
+    {first=1328, last=1423, name="Armenian"},
+    {first=1424, last=1535, name="Hebrew"},
+    {first=1536, last=1791, name="Arabic"},
+    {first=1792, last=1871, name="Syriac"},
+    {first=1872, last=1919, name="Arabic Supplement"},
+    {first=1920, last=1983, name="Thaana"},
+    {first=1984, last=2047, name="NKo"},
+    {first=2048, last=2111, name="Samaritan"},
+    {first=2112, last=2143, name="Mandaic"},
+    {first=2144, last=2159, name="Syriac Supplement"},
+    {first=2160, last=2207, name="Arabic Extended-B"},
+    {first=2208, last=2303, name="Arabic Extended-A"},
+    {first=2304, last=2431, name="Devanagari"},
+    {first=2432, last=2559, name="Bengali"},
+    {first=2560, last=2687, name="Gurmukhi"},
+    {first=2688, last=2815, name="Gujarati"},
+    {first=2816, last=2943, name="Oriya"},
+    {first=2944, last=3071, name="Tamil"},
+    {first=3072, last=3199, name="Telugu"},
+    {first=3200, last=3327, name="Kannada"},
+    {first=3328, last=3455, name="Malayalam"},
+    {first=3456, last=3583, name="Sinhala"},
+    {first=3584, last=3711, name="Thai"},
+    {first=3712, last=3839, name="Lao"},
+    {first=3840, last=4095, name="Tibetan"},
+    {first=4096, last=4255, name="Myanmar"},
+    {first=4256, last=4351, name="Georgian"},
+    {first=4352, last=4607, name="Hangul Jamo"},
+    {first=4608, last=4991, name="Ethiopic"},
+    {first=4992, last=5023, name="Ethiopic Supplement"},
+    {first=5024, last=5119, name="Cherokee"},
+    {first=5120, last=5759, name="Unified Canadian Aboriginal Syllabics"},
+    {first=5760, last=5791, name="Ogham"},
+    {first=5792, last=5887, name="Runic"},
+    {first=5888, last=5919, name="Tagalog"},
+    {first=5920, last=5951, name="Hanunoo"},
+    {first=5952, last=5983, name="Buhid"},
+    {first=5984, last=6015, name="Tagbanwa"},
+    {first=6016, last=6143, name="Khmer"},
+    {first=6144, last=6319, name="Mongolian"},
+    {first=6320, last=6399, name="Unified Canadian Aboriginal Syllabics Extended"},
+    {first=6400, last=6479, name="Limbu"},
+    {first=6480, last=6527, name="Tai Le"},
+    {first=6528, last=6623, name="New Tai Lue"},
+    {first=6624, last=6655, name="Khmer Symbols"},
+    {first=6656, last=6687, name="Buginese"},
+    {first=6688, last=6831, name="Tai Tham"},
+    {first=6832, last=6911, name="Combining Diacritical Marks Extended"},
+    {first=6912, last=7039, name="Balinese"},
+    {first=7040, last=7103, name="Sundanese"},
+    {first=7104, last=7167, name="Batak"},
+    {first=7168, last=7247, name="Lepcha"},
+    {first=7248, last=7295, name="Ol Chiki"},
+    {first=7296, last=7311, name="Cyrillic Extended-C"},
+    {first=7312, last=7359, name="Georgian Extended"},
+    {first=7360, last=7375, name="Sundanese Supplement"},
+    {first=7376, last=7423, name="Vedic Extensions"},
+    {first=7424, last=7551, name="Phonetic Extensions"},
+    {first=7552, last=7615, name="Phonetic Extensions Supplement"},
+    {first=7616, last=7679, name="Combining Diacritical Marks Supplement"},
+    {first=7680, last=7935, name="Latin Extended Additional"},
+    {first=7936, last=8191, name="Greek Extended"},
+    {first=8192, last=8303, name="General Punctuation"},
+    {first=8304, last=8351, name="Superscripts and Subscripts"},
+    {first=8352, last=8399, name="Currency Symbols"},
+    {first=8400, last=8447, name="Combining Diacritical Marks for Symbols"},
+    {first=8448, last=8527, name="Letterlike Symbols"},
+    {first=8528, last=8591, name="Number Forms"},
+    {first=8592, last=8703, name="Arrows"},
+    {first=8704, last=8959, name="Mathematical Operators"},
+    {first=8960, last=9215, name="Miscellaneous Technical"},
+    {first=9216, last=9279, name="Control Pictures"},
+    {first=9280, last=9311, name="Optical Character Recognition"},
+    {first=9312, last=9471, name="Enclosed Alphanumerics"},
+    {first=9472, last=9599, name="Box Drawing"},
+    {first=9600, last=9631, name="Block Elements"},
+    {first=9632, last=9727, name="Geometric Shapes"},
+    {first=9728, last=9983, name="Miscellaneous Symbols"},
+    {first=9984, last=10175, name="Dingbats"},
+    {first=10176, last=10223, name="Miscellaneous Mathematical Symbols-A"},
+    {first=10224, last=10239, name="Supplemental Arrows-A"},
+    {first=10240, last=10495, name="Braille Patterns"},
+    {first=10496, last=10623, name="Supplemental Arrows-B"},
+    {first=10624, last=10751, name="Miscellaneous Mathematical Symbols-B"},
+    {first=10752, last=11007, name="Supplemental Mathematical Operators"},
+    {first=11008, last=11263, name="Miscellaneous Symbols and Arrows"},
+    {first=11264, last=11359, name="Glagolitic"},
+    {first=11360, last=11391, name="Latin Extended-C"},
+    {first=11392, last=11519, name="Coptic"},
+    {first=11520, last=11567, name="Georgian Supplement"},
+    {first=11568, last=11647, name="Tifinagh"},
+    {first=11648, last=11743, name="Ethiopic Extended"},
+    {first=11744, last=11775, name="Cyrillic Extended-A"},
+    {first=11776, last=11903, name="Supplemental Punctuation"},
+    {first=11904, last=12031, name="CJK Radicals Supplement"},
+    {first=12032, last=12255, name="Kangxi Radicals"},
+    {first=12272, last=12287, name="Ideographic Description Characters"},
+    {first=12288, last=12351, name="CJK Symbols and Punctuation"},
+    {first=12352, last=12447, name="Hiragana"},
+    {first=12448, last=12543, name="Katakana"},
+    {first=12544, last=12591, name="Bopomofo"},
+    {first=12592, last=12687, name="Hangul Compatibility Jamo"},
+    {first=12688, last=12703, name="Kanbun"},
+    {first=12704, last=12735, name="Bopomofo Extended"},
+    {first=12736, last=12783, name="CJK Strokes"},
+    {first=12784, last=12799, name="Katakana Phonetic Extensions"},
+    {first=12800, last=13055, name="Enclosed CJK Letters and Months"},
+    {first=13056, last=13311, name="CJK Compatibility"},
+    {first=13312, last=19903, name="CJK Unified Ideographs Extension A"},
+    {first=19904, last=19967, name="Yijing Hexagram Symbols"},
+    {first=19968, last=40959, name="CJK Unified Ideographs"},
+    {first=40960, last=42127, name="Yi Syllables"},
+    {first=42128, last=42191, name="Yi Radicals"},
+    {first=42192, last=42239, name="Lisu"},
+    {first=42240, last=42559, name="Vai"},
+    {first=42560, last=42655, name="Cyrillic Extended-B"},
+    {first=42656, last=42751, name="Bamum"},
+    {first=42752, last=42783, name="Modifier Tone Letters"},
+    {first=42784, last=43007, name="Latin Extended-D"},
+    {first=43008, last=43055, name="Syloti Nagri"},
+    {first=43056, last=43071, name="Common Indic Number Forms"},
+    {first=43072, last=43135, name="Phags-pa"},
+    {first=43136, last=43231, name="Saurashtra"},
+    {first=43232, last=43263, name="Devanagari Extended"},
+    {first=43264, last=43311, name="Kayah Li"},
+    {first=43312, last=43359, name="Rejang"},
+    {first=43360, last=43391, name="Hangul Jamo Extended-A"},
+    {first=43392, last=43487, name="Javanese"},
+    {first=43488, last=43519, name="Myanmar Extended-B"},
+    {first=43520, last=43615, name="Cham"},
+    {first=43616, last=43647, name="Myanmar Extended-A"},
+    {first=43648, last=43743, name="Tai Viet"},
+    {first=43744, last=43775, name="Meetei Mayek Extensions"},
+    {first=43776, last=43823, name="Ethiopic Extended-A"},
+    {first=43824, last=43887, name="Latin Extended-E"},
+    {first=43888, last=43967, name="Cherokee Supplement"},
+    {first=43968, last=44031, name="Meetei Mayek"},
+    {first=44032, last=55215, name="Hangul Syllables"},
+    {first=55216, last=55295, name="Hangul Jamo Extended-B"},
+    {first=55296, last=56191, name="High Surrogates"},
+    {first=56192, last=56319, name="High Private Use Surrogates"},
+    {first=56320, last=57343, name="Low Surrogates"},
+    {first=57344, last=63743, name="Private Use Area"},
+    {first=63744, last=64255, name="CJK Compatibility Ideographs"},
+    {first=64256, last=64335, name="Alphabetic Presentation Forms"},
+    {first=64336, last=65023, name="Arabic Presentation Forms-A"},
+    {first=65024, last=65039, name="Variation Selectors"},
+    {first=65040, last=65055, name="Vertical Forms"},
+    {first=65056, last=65071, name="Combining Half Marks"},
+    {first=65072, last=65103, name="CJK Compatibility Forms"},
+    {first=65104, last=65135, name="Small Form Variants"},
+    {first=65136, last=65279, name="Arabic Presentation Forms-B"},
+    {first=65280, last=65519, name="Halfwidth and Fullwidth Forms"},
+    {first=65520, last=65535, name="Specials"},
+    {first=65536, last=65663, name="Linear B Syllabary"},
+    {first=65664, last=65791, name="Linear B Ideograms"},
+    {first=65792, last=65855, name="Aegean Numbers"},
+    {first=65856, last=65935, name="Ancient Greek Numbers"},
+    {first=65936, last=65999, name="Ancient Symbols"},
+    {first=66000, last=66047, name="Phaistos Disc"},
+    {first=66176, last=66207, name="Lycian"},
+    {first=66208, last=66271, name="Carian"},
+    {first=66272, last=66303, name="Coptic Epact Numbers"},
+    {first=66304, last=66351, name="Old Italic"},
+    {first=66352, last=66383, name="Gothic"},
+    {first=66384, last=66431, name="Old Permic"},
+    {first=66432, last=66463, name="Ugaritic"},
+    {first=66464, last=66527, name="Old Persian"},
+    {first=66560, last=66639, name="Deseret"},
+    {first=66640, last=66687, name="Shavian"},
+    {first=66688, last=66735, name="Osmanya"},
+    {first=66736, last=66815, name="Osage"},
+    {first=66816, last=66863, name="Elbasan"},
+    {first=66864, last=66927, name="Caucasian Albanian"},
+    {first=66928, last=67007, name="Vithkuqi"},
+    {first=67072, last=67455, name="Linear A"},
+    {first=67456, last=67519, name="Latin Extended-F"},
+    {first=67584, last=67647, name="Cypriot Syllabary"},
+    {first=67648, last=67679, name="Imperial Aramaic"},
+    {first=67680, last=67711, name="Palmyrene"},
+    {first=67712, last=67759, name="Nabataean"},
+    {first=67808, last=67839, name="Hatran"},
+    {first=67840, last=67871, name="Phoenician"},
+    {first=67872, last=67903, name="Lydian"},
+    {first=67968, last=67999, name="Meroitic Hieroglyphs"},
+    {first=68000, last=68095, name="Meroitic Cursive"},
+    {first=68096, last=68191, name="Kharoshthi"},
+    {first=68192, last=68223, name="Old South Arabian"},
+    {first=68224, last=68255, name="Old North Arabian"},
+    {first=68288, last=68351, name="Manichaean"},
+    {first=68352, last=68415, name="Avestan"},
+    {first=68416, last=68447, name="Inscriptional Parthian"},
+    {first=68448, last=68479, name="Inscriptional Pahlavi"},
+    {first=68480, last=68527, name="Psalter Pahlavi"},
+    {first=68608, last=68687, name="Old Turkic"},
+    {first=68736, last=68863, name="Old Hungarian"},
+    {first=68864, last=68927, name="Hanifi Rohingya"},
+    {first=69216, last=69247, name="Rumi Numeral Symbols"},
+    {first=69248, last=69311, name="Yezidi"},
+    {first=69312, last=69375, name="Arabic Extended-C"},
+    {first=69376, last=69423, name="Old Sogdian"},
+    {first=69424, last=69487, name="Sogdian"},
+    {first=69488, last=69551, name="Old Uyghur"},
+    {first=69552, last=69599, name="Chorasmian"},
+    {first=69600, last=69631, name="Elymaic"},
+    {first=69632, last=69759, name="Brahmi"},
+    {first=69760, last=69839, name="Kaithi"},
+    {first=69840, last=69887, name="Sora Sompeng"},
+    {first=69888, last=69967, name="Chakma"},
+    {first=69968, last=70015, name="Mahajani"},
+    {first=70016, last=70111, name="Sharada"},
+    {first=70112, last=70143, name="Sinhala Archaic Numbers"},
+    {first=70144, last=70223, name="Khojki"},
+    {first=70272, last=70319, name="Multani"},
+    {first=70320, last=70399, name="Khudawadi"},
+    {first=70400, last=70527, name="Grantha"},
+    {first=70656, last=70783, name="Newa"},
+    {first=70784, last=70879, name="Tirhuta"},
+    {first=71040, last=71167, name="Siddham"},
+    {first=71168, last=71263, name="Modi"},
+    {first=71264, last=71295, name="Mongolian Supplement"},
+    {first=71296, last=71375, name="Takri"},
+    {first=71424, last=71503, name="Ahom"},
+    {first=71680, last=71759, name="Dogra"},
+    {first=71840, last=71935, name="Warang Citi"},
+    {first=71936, last=72031, name="Dives Akuru"},
+    {first=72096, last=72191, name="Nandinagari"},
+    {first=72192, last=72271, name="Zanabazar Square"},
+    {first=72272, last=72367, name="Soyombo"},
+    {first=72368, last=72383, name="Unified Canadian Aboriginal Syllabics Extended-A"},
+    {first=72384, last=72447, name="Pau Cin Hau"},
+    {first=72448, last=72543, name="Devanagari Extended-A"},
+    {first=72704, last=72815, name="Bhaiksuki"},
+    {first=72816, last=72895, name="Marchen"},
+    {first=72960, last=73055, name="Masaram Gondi"},
+    {first=73056, last=73135, name="Gunjala Gondi"},
+    {first=73440, last=73471, name="Makasar"},
+    {first=73472, last=73567, name="Kawi"},
+    {first=73648, last=73663, name="Lisu Supplement"},
+    {first=73664, last=73727, name="Tamil Supplement"},
+    {first=73728, last=74751, name="Cuneiform"},
+    {first=74752, last=74879, name="Cuneiform Numbers and Punctuation"},
+    {first=74880, last=75087, name="Early Dynastic Cuneiform"},
+    {first=77712, last=77823, name="Cypro-Minoan"},
+    {first=77824, last=78895, name="Egyptian Hieroglyphs"},
+    {first=78896, last=78943, name="Egyptian Hieroglyph Format Controls"},
+    {first=82944, last=83583, name="Anatolian Hieroglyphs"},
+    {first=92160, last=92735, name="Bamum Supplement"},
+    {first=92736, last=92783, name="Mro"},
+    {first=92784, last=92879, name="Tangsa"},
+    {first=92880, last=92927, name="Bassa Vah"},
+    {first=92928, last=93071, name="Pahawh Hmong"},
+    {first=93760, last=93855, name="Medefaidrin"},
+    {first=93952, last=94111, name="Miao"},
+    {first=94176, last=94207, name="Ideographic Symbols and Punctuation"},
+    {first=94208, last=100351, name="Tangut"},
+    {first=100352, last=101119, name="Tangut Components"},
+    {first=101120, last=101631, name="Khitan Small Script"},
+    {first=101632, last=101759, name="Tangut Supplement"},
+    {first=110576, last=110591, name="Kana Extended-B"},
+    {first=110592, last=110847, name="Kana Supplement"},
+    {first=110848, last=110895, name="Kana Extended-A"},
+    {first=110896, last=110959, name="Small Kana Extension"},
+    {first=110960, last=111359, name="Nushu"},
+    {first=113664, last=113823, name="Duployan"},
+    {first=113824, last=113839, name="Shorthand Format Controls"},
+    {first=118528, last=118735, name="Znamenny Musical Notation"},
+    {first=118784, last=119039, name="Byzantine Musical Symbols"},
+    {first=119040, last=119295, name="Musical Symbols"},
+    {first=119296, last=119375, name="Ancient Greek Musical Notation"},
+    {first=119488, last=119519, name="Kaktovik Numerals"},
+    {first=119520, last=119551, name="Mayan Numerals"},
+    {first=119552, last=119647, name="Tai Xuan Jing Symbols"},
+    {first=119648, last=119679, name="Counting Rod Numerals"},
+    {first=119808, last=120831, name="Mathematical Alphanumeric Symbols"},
+    {first=120832, last=121519, name="Sutton SignWriting"},
+    {first=122624, last=122879, name="Latin Extended-G"},
+    {first=122880, last=122927, name="Glagolitic Supplement"},
+    {first=122928, last=123023, name="Cyrillic Extended-D"},
+    {first=123136, last=123215, name="Nyiakeng Puachue Hmong"},
+    {first=123536, last=123583, name="Toto"},
+    {first=123584, last=123647, name="Wancho"},
+    {first=124112, last=124159, name="Nag Mundari"},
+    {first=124896, last=124927, name="Ethiopic Extended-B"},
+    {first=124928, last=125151, name="Mende Kikakui"},
+    {first=125184, last=125279, name="Adlam"},
+    {first=126064, last=126143, name="Indic Siyaq Numbers"},
+    {first=126208, last=126287, name="Ottoman Siyaq Numbers"},
+    {first=126464, last=126719, name="Arabic Mathematical Alphabetic Symbols"},
+    {first=126976, last=127023, name="Mahjong Tiles"},
+    {first=127024, last=127135, name="Domino Tiles"},
+    {first=127136, last=127231, name="Playing Cards"},
+    {first=127232, last=127487, name="Enclosed Alphanumeric Supplement"},
+    {first=127488, last=127743, name="Enclosed Ideographic Supplement"},
+    {first=127744, last=128511, name="Miscellaneous Symbols and Pictographs"},
+    {first=128512, last=128591, name="Emoticons"},
+    {first=128592, last=128639, name="Ornamental Dingbats"},
+    {first=128640, last=128767, name="Transport and Map Symbols"},
+    {first=128768, last=128895, name="Alchemical Symbols"},
+    {first=128896, last=129023, name="Geometric Shapes Extended"},
+    {first=129024, last=129279, name="Supplemental Arrows-C"},
+    {first=129280, last=129535, name="Supplemental Symbols and Pictographs"},
+    {first=129536, last=129647, name="Chess Symbols"},
+    {first=129648, last=129791, name="Symbols and Pictographs Extended-A"},
+    {first=129792, last=130047, name="Symbols for Legacy Computing"},
+    {first=131072, last=173791, name="CJK Unified Ideographs Extension B"},
+    {first=173824, last=177983, name="CJK Unified Ideographs Extension C"},
+    {first=177984, last=178207, name="CJK Unified Ideographs Extension D"},
+    {first=178208, last=183983, name="CJK Unified Ideographs Extension E"},
+    {first=183984, last=191471, name="CJK Unified Ideographs Extension F"},
+    {first=194560, last=195103, name="CJK Compatibility Ideographs Supplement"},
+    {first=196608, last=201551, name="CJK Unified Ideographs Extension G"},
+    {first=201552, last=205743, name="CJK Unified Ideographs Extension H"},
+    {first=917504, last=917631, name="Tags"},
+    {first=917760, last=917999, name="Variation Selectors Supplement"},
+    {first=983040, last=1048575, name="Supplementary Private Use Area-A"},
+    {first=1048576, last=1114111, name="Supplementary Private Use Area-B"}
+  }
+  return unicodeBlocks
+end
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</lua>
+%    \end{macrocode}
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+% \end{implementation}
+%
+% \PrintIndex

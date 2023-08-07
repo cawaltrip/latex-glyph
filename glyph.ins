@@ -1,0 +1,86 @@
+\input l3docstrip.tex
+\Msg{************************************************************************}
+\Msg{* Installation: \jobname}
+\Msg{************************************************************************}
+
+\keepsilent
+\askforoverwritefalse
+
+\def\MetaPrefix{--}
+\preamble
+
+Copyright © 2023 Chris Waltrip
+
+This work may be distributed and/or modified under the
+conditions of the LaTeX Project Public License (SPDX: LPPL), 
+either version 1.3 of this license or (at your option) any 
+later version. The latest version of this license is at
+
+   https://www.latex-project.org/lppl.txt
+
+and version 1.3c or later is part of all distributions of LaTeX
+version 2008 or later.
+
+This work has the LPPL maintenance status `maintained'.
+
+The Current Maintainer of this work is Chris Waltrip.
+
+This work consists of all files listed in ./MANIFEST-LPPL.md.
+\endpreamble
+\nopostamble
+
+\generate{%
+  \file{glyph.lua}{\from{glyph-lua.dtx}{package,lua}}%
+}
+
+\let\MetaPrefix\DoubleperCent
+\preamble
+This is a generated file.
+
+Copyright © 2023 Chris Waltrip
+
+This work may be distributed and/or modified under the
+conditions of the LaTeX Project Public License (SPDX: LPPL), 
+either version 1.3 of this license or (at your option) any 
+later version. The latest version of this license is at
+
+   https://www.latex-project.org/lppl.txt
+
+and version 1.3c or later is part of all distributions of LaTeX
+version 2008 or later.
+
+This work has the LPPL maintenance status `maintained'.
+
+The Current Maintainer of this work is Chris Waltrip.
+
+This work consists of all files listed in ./MANIFEST-LPPL.md.
+\endpreamble
+
+% Don't need this?
+% \usedir{tex/latex/glyph}
+
+\generate{%
+  \file{glyph.sty}{%
+    \from{glyph.dtx}{package,init}
+    \from{glyph-messages.dtx}{package}
+    \from{glyph.dtx}{package,options}
+    \from{glyph-functions.dtx}{package}
+    \from{glyph-functions-luatex.dtx}{package}
+    \from{glyph.dtx}{package,interfaces}
+  }
+}
+
+\obeyspaces
+\Msg{************************************************************************}
+\Msg{*}
+\Msg{* To finish the installation you have to move the following}
+\Msg{* file into a directory searched by TeX:}
+\Msg{*}
+\Msg{*     glyph.sty}
+\Msg{*     glyph.lua}
+\Msg{*}
+\Msg{* Happy Glyphing!}
+\Msg{*}
+\Msg{************************************************************************}
+
+\endbatchfile
