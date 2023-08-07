@@ -110,7 +110,8 @@
 %   \item \hologo{LuaLaTeX} isn't handling fixed width fonts.
 %   \item options can't be changed mid-document (specifically, \emph{dualglyphFontsSecondaryColor}).
 %   \item the command that dumps the entire glyph table does not display \emph{dual glyph} characters together.
-%   \item some of the document commands (at least the \cs{\meta{prefix}Glyph\meta{glyph-name}} commands) should
+%   \item some of the document commands (at least the \\
+%         \cs{\meta{prefix}Glyph\meta{glyph-name}} commands) should
 %         be cleaned up and placed under a single command (e.g., \cs{PutGlyph\oarg{prefix}\meta{glyph-name}}) in
 %         order to prevent colliding with a glyph named \enquote{glyph}.
 %   \item the font family naming scheme is defined at the \pkg{glyph-functions-luatex} level and should instead be 
