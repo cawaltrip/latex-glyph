@@ -8,10 +8,12 @@ module = "glyph"
 -- TDS zip file
 packtdszip = true
 
+-- Need to escape to shell for typesetting.
+typesetopts = "-interaction=nonstopmode --shell-escape"
+
 -- Files to typeset
-typesetsourcefiles = {"glyph-lua.dtx"}
+typesetsuppfiles = {"example.pdf"}
 typesetfiles = {"glyph.dtx"}
--- typesetopts = "" -- get rid of noninteractive mode so we can get notified of errors.
 
 sourcefiles = {
   "glyph.dtx",
@@ -52,8 +54,8 @@ uploadconfig = {
   using glyphs from any OTF font installed on the their system. This
   methods uses the glyph's name (as defined inside the font) instead
   of the Unicode codepoint.  Document-level commands are created for
-  each glyph in a predictable way, a fallback is provided. Lastly, a
-  command for showing every glyph (and its name) in a font is made
+  each glyph in a predictable way, and a fallback is provided. Lastly, 
+  a command for showing every glyph (and its name) in a font is made
   available.
   ]]
   }

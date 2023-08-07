@@ -16,7 +16,7 @@
 % 
 % The Current Maintainer of this work is Chris Waltrip.
 %
-% This work consists of all files listed in ./MANIFEST-LPPL.md.
+% This work consists of all files listed in ./MANIFEST.md.
 %<*driver>
 % Don't know if this line is important
 \ProvidesFile{glyph.dtx}[2023/08/04 LaTeX package for arbitrary glyph command generation]
@@ -34,21 +34,38 @@
 ]
   {glyph}
 \usepackage{hologo}
-\errorcontextlines 10
+\usepackage{soul}
+% NOTE: Due to the next package, when building this documentation,
+% you must have shell-escape enabled.  Understand the security 
+% implications of this before running it!
+\usepackage{tcolorbox}
+\tcbuselibrary{minted, skins, raster, documentation}
+\tcbset{listing engine=minted}
+
 \begin{document}
-  \DocInput{\jobname.dtx}
+  % Use this config to create one PDF with both user manuals
+  % and implementation details in one.
+  % \DisableImplementation
+  % \DocInput{glyph.dtx, glyph-messages.dtx, glyph-functions.dtx, glyph-functions-luatex.dtx, glyph-lua.dtx}
+  % \EnableImplementation
+  % \DisableDocumentation
+  % \DocInputAgain
+
+  % Use this config to create one PDF with just user manuals
+  \DisableImplementation
+  \DocInput{glyph.dtx, glyph-messages.dtx, glyph-functions.dtx, glyph-functions-luatex.dtx, glyph-lua.dtx}
 \end{document}
 %</driver>
 % \fi
 %
 % \GetFileInfo{glyph.sty}
 %
-% \title{The \pkg{glyph}\thanks{\href{https://github.com/cawaltrip/latex-glyph}{\fabGithub/latex-glyph}} package}
+% \title{The \pkg{glyph}\thanks{\href{https://github.com/cawaltrip/latex-glyph}{\fabGithub/latex-glyph}}\ \ package}
 % \author{Chris Waltrip\thanks{\href{https://github.com/cawaltrip}{\fabGithub/cawaltrip}}}
 % \date{Released \filedate}
 % \maketitle
 %
-% \changes{0.0.1}{2023/08/04}{Alpha release}
+% \changes{0.1.0}{2023/08/04}{Alpha release}
 %
 % \begin{documentation}
 %
@@ -134,7 +151,7 @@
 %
 %   \begin{itemize}
 %     \item |fonts=| |{| Comma-separated list of |<prefix> = <font name> }|
-%     \item |dualglyphFonts=| |{| Comma-separated list of |<prefix> = <font name> }| \footnote{Expect this to be merged into fonts in the future}
+%     \item |dualglyphFonts=| |{| Comma-separated list of |<prefix> = <font name> }| \footnote{Expect this to be merged into fonts in the future} 
 %     \item |dualglyphFontsSecondaryColor=| |{|a color in a form that \pkg{xcolor} accepts |}|
 %   \end{itemize}
 % \end{function}
@@ -142,7 +159,7 @@
 % Glyphs can be called with either 
 % \begin{itemize}
 %  \item \cs{\meta{prefix}\meta{GlyphName}}
-%  \item \cs{\meta{prefix}Glyph\meta{glyph-name}}\footnote{This will be changing soon to help against collisions with glyphs named \enquote{glyph}}
+%  \item \cs{\meta{prefix}Glyph\meta{glyph-name}}\footnote{This will be changing soon to help against collisions with glyphs named \enquote{glyph}}\footnote{This is broken right now anyways.}
 % \end{itemize}
 % 
 % 
@@ -150,25 +167,30 @@
 % If you wanted to load some \emph{Font Awesome} fonts, and then call a few 
 % glyphs, you might use the followning invocation.
 % 
-% ^^A  \begin{verbatim}
-% ^^A  ...
-% ^^A  \usepackage[
-% ^^A   fonts = {
-% ^^A       fa = Font Awesome 6 Pro Regular,
-% ^^A       fas = Font Awesome 6 Pro Solid,
-% ^^A       fab = Font Awesome 6 Brands
-% ^^A   },
-% ^^A   dualglyphFonts = {
-% ^^A       fad = Font Awesome 6 Duotone,
-% ^^A   },
-% ^^A   dualglyphFontsSecondaryColor = {blue}
-% ^^A  ]{glyph}
-% ^^A  ...
-% ^^A  \begin{document}
-% ^^A  Do you want an awesome face?  Have two! \faFaceAwesome\ and \faGlyph{face-awesome}!
-% ^^A  What about a glyph with illegal control sequence characters?  Try \fasTransporterOne
-% ^^A  or \fasGlyph{transporter-one}.  Duotone icons work natively too: \fadWandMagicSparkles.
-% ^^A \end{verbatim}
+% \begin{tcblisting}{colback=green!5!white,colframe=green!50!black,
+%     listing and comment,enhanced,drop fuzzy shadow,
+%     before=\begin{center},after=\end{center}, lower separated=true,
+%     pdf comment={example.pdf}, verbatim ignore percent}
+% \documentclass{article}
+% \usepackage{xcolor}
+% \definecolor{orange}{RGB}{255, 192, 0}
+% \usepackage [
+%   fonts = {
+%     fa = Font Awesome 6 Pro Regular,
+%     fas = Font Awesome 6 Pro Solid
+%   },
+%   dualglyphFonts = {
+%     fad = Font Awesome 6 Duotone,
+%   },
+%   dualglyphFontsSecondaryColor = {orange}
+% ]{glyph}
+% \begin{document}
+%   Do you want an awesome face? \faFaceAwesome \\
+%   What about a glyph with illegal control \\
+%   sequence characters? \fasTransporterOne \\
+%   Duotone icons work natively too: \fadWandMagicSparkles.
+% \end{document}
+% \end{tcblisting}
 %
 % \subsection{Dependencies}
 % This package relies on
@@ -229,7 +251,7 @@
 %
 % Provide package information.
 %    \begin{macrocode}
-\ProvidesExplPackage{glyph}{2023-08-04}{0.0.1}
+\ProvidesExplPackage{glyph}{2023-08-04}{0.1.0}
   {LaTeX support for placing font glyphs via glyph name}
 %    \end{macrocode}
 %
@@ -317,15 +339,8 @@
 % are declared for all fonts specified in |fonts| and |dualglyphFonts|, but
 % that is likely to change to be specified per-font. All options can only 
 % be set in the preamble.  While that's fine for most, setting the secondary 
-% color should be possible anywhere.\par
+% color should be possible anywhere.
 %
-% ^^A TODO: Move this next paragraph to a more appropriate place.
-% We require \pkg{\hologo{LaTeX2e}[2022-06-01]} earlier so that we have
-% access to \cs{DeclareKeys}, \cs{SetKeys}, and \cs{ProcessKeyOptions}.
-% Additionally, in \pkg{\hologo{LaTeX2e}[2020-10-01]}, \pkg{xparse} commands 
-% like \cs{NewDocumentCommand} were added into the kernel, so we get those
-% as well.  They aren't used here, but we make extensive use of them
-% in this package.
 %    \begin{macrocode}
 \DeclareKeys[glyph] {
   fonts .code = \prop_put_from_keyval:Nn\g_@@_fonts_list_prop{#1},

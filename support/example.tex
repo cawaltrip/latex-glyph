@@ -1,0 +1,20 @@
+\documentclass[varwidth, margin=5mm]{standalone}
+\usepackage{xcolor}
+\definecolor{secondary}{RGB}{166,171,184}
+\definecolor{orange}{RGB}{255, 192, 0}
+\usepackage[
+  fonts = {
+    fa = Font Awesome 6 Pro Regular,
+    fas = Font Awesome 6 Pro Solid
+  },
+  dualglyphFonts = {
+    fad = Font Awesome 6 Duotone,
+  },
+  dualglyphFontsSecondaryColor = {orange}
+]{glyph}
+\begin{document}
+  Do you want an awesome face? \faFaceAwesome \\
+  What about a glyph with illegal control \\
+  sequence characters? \fasTransporterOne \\
+  Duotone icons work natively too: \fadWandMagicSparkles.
+\end{document}
